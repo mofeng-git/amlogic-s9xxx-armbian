@@ -278,6 +278,7 @@ on:
 
 env:
   TZ: Etc/UTC
+  IMAGE_PREFIX: One-KVM
 
 jobs:
   build:
@@ -369,7 +370,7 @@ jobs:
           ln -sf /builder/build /home/runner/work/_actions/ophub/amlogic-s9xxx-armbian/main/build
 
           sudo timedatectl set-timezone "${TZ}"
-          echo "build_tag=Armbian${set_release}_arm64_${{ inputs.armbian_edition }}_$(date +"%Y.%m")" >> ${GITHUB_ENV}
+          echo "build_tag=${IMAGE_PREFIX}${set_release}_arm64_${{ inputs.armbian_edition }}_$(date +"%Y.%m")" >> ${GITHUB_ENV}
           echo "status=success" >> ${GITHUB_OUTPUT}
 
       - name: Rebuild Armbian for target boards
@@ -385,6 +386,17 @@ jobs:
           kernel_usage: ${{ inputs.kernel_usage }}
           armbian_fstype: ${{ inputs.armbian_fstype }}
           builder_name: ${{ inputs.builder_name }}
+
+      - name: Rename rebuilt images to One-KVM
+        run: |
+          shopt -s nullglob
+          for file in "${PACKAGED_OUTPUTPATH}"/*; do
+            base_name="$(basename "${file}")"
+            if [[ "${base_name}" == Armbian* ]]; then
+              mv -f "${file}" "$(dirname "${file}")/${IMAGE_PREFIX}${base_name#Armbian}"
+            fi
+          done
+        if: ${{ env.PACKAGED_STATUS == 'success' && !cancelled() }}
 
       - name: Upload Armbian images to Release
         uses: ncipollo/release-action@main
